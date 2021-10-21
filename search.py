@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[37]:
+# In[1]:
 
 
 from typing import List
@@ -18,7 +18,7 @@ from natasha import (
 )
 
 
-# In[38]:
+# In[2]:
 
 
 segmenter = Segmenter()
@@ -30,7 +30,7 @@ ner_tagger = NewsNERTagger(emb)
 names_extractor = NamesExtractor(morph_vocab)
 
 
-# In[39]:
+# In[3]:
 
 
 class Word:
@@ -85,7 +85,7 @@ class Text:
         return self.source + ' ' + self.text
 
 
-# In[40]:
+# In[4]:
 
 
 import numpy as np
@@ -96,7 +96,7 @@ from pymorphy2 import MorphAnalyzer
 import json
 
 
-# In[41]:
+# In[10]:
 
 
 class Searcher:
@@ -112,6 +112,11 @@ class Searcher:
     prime_ids: np.ndarray
 
     articles: list
+        
+    conv: np.ndarray
+    kernel: np.ndarray
+    
+    query_status: defaultdict
 
     morph: MorphAnalyzer
 
@@ -144,7 +149,7 @@ class Searcher:
         pos_query = np.zeros((len(self.pos_vocab), 1))
         lemmas_query = np.zeros((len(self.lemmas_vocab), 1))
         tokens_query = np.zeros((len(self.tokens_vocab), 1))
-        query_status = defaultdict(list)
+        query_status = defaultdict(dict)
         toks = query.split()
         if len(toks) == 1 and toks[0].find('+') < 0:
             query_status['simple'] = True
@@ -152,23 +157,25 @@ class Searcher:
             split_toks = tok.split('+')
             for s_tok in split_toks:
                 if s_tok.startswith('''"'''):
-                    query_status['token'].append(i)
+                    query_status['token'][i] = set([s_tok.strip('''\"''')])
                     try:
                         tokens_query[self.tokens_vocab[s_tok.strip('''"''')]][0] = i + 1
                     except KeyError:
                         query_status['invalid'] = 'Token %s is not found' % s_tok
                         return query_status, None, None, None
                 elif s_tok in self.pos_vocab.keys():
-                    query_status['POS'].append(i)
+                    query_status['POS'][i] =  set([s_tok])
                     pos_query[self.pos_vocab[s_tok]][0] = i + 1
+                    print(np.nonzero(pos_query))
                 else:
-                    query_status['lemma'].append(i)
                     ana = self.morph.parse(s_tok)
                     poss_lemmas = set([x.normal_form for x in ana])
                     valid = False
+                    query_status['lemma'][i] = poss_lemmas
                     for lemma in poss_lemmas:
                         try:
                             lemmas_query[self.lemmas_vocab[lemma]][0] = i + 1
+                            print(np.nonzero(lemmas_query))
                             valid = True
                         except KeyError:
                             continue
@@ -179,12 +186,35 @@ class Searcher:
     
     def display_results(self, rel) -> dict:
         result = {}
+        if not self.query_status['simple']:
+            rel = self.brute_force(rel)
         if len(rel) == 0:
             return {-1: 'Nothing found'}
         for n, idx in enumerate(rel):
             sent = self.articles[idx]
-            result[n] = [sent.source, sent.text]
+            result[n] = [idx, sent.source, sent.text]
         return result
+    
+    def brute_force(self, rel) -> np.ndarray:
+        real_rel = []
+        for n, idx in enumerate(rel):
+            sent = self.articles[idx].words
+            for i in range(len(sent) + 1 - self.kernel.shape[1]):
+                valid_m = True
+                for j, w in self.query_status['POS'].items():
+                    if sent[i+j].pos not in w:
+                        valid_m = False
+                for j, w in self.query_status['lemma'].items():
+                    if sent[i+j].lemma not in w:
+                        valid_m = False
+                for j, w in self.query_status['token'].items():
+                    if sent[i+j].token not in w:
+                        valid_m = False
+                if valid_m:
+                    real_rel.append(idx)
+                    break
+        return real_rel
+            
         
     
     def process_query(self, query) -> list:
@@ -196,7 +226,7 @@ class Searcher:
             kernel = np.zeros((3, 3))
             for row, term in {0: 'POS', 1: 'lemma', 2: 'token'}.items():
                 if query_status[term]:
-                    for i in query_status[term]:
+                    for i in query_status[term].keys():
                         kernel[row][i] = i+1
             return kernel
         
@@ -210,59 +240,54 @@ class Searcher:
             return res
         
         def _find_integers(prime_mapping) -> np.ndarray:
-            e = math.pow(10, -15)
-            mask = np.vectorize(lambda x: abs(x - np.round(x)) < e)(prime_mapping)
+            e = math.pow(10, -19)
+            mask = np.vectorize(lambda x: np.isclose(x, np.round(x), atol=e))(prime_mapping)
             return np.nonzero(np.sum(mask, axis=1))[0]
         
-        query_status, pos_query, lemmas_query, tokens_query = self.parse_query(query)
-        if query_status['invalid']:
-            return {-1: query_status['invalid']}
-        if query_status['simple']:
-            if query_status['POS']:
+        self.query_status, pos_query, lemmas_query, tokens_query = self.parse_query(query)
+        if self.query_status['invalid']:
+            return {-1: self.query_status['invalid']}
+        if self.query_status['simple']:
+            if self.query_status['POS']:
                 rel = _simple_search(pos_query, self.pos_matrix)
-            elif query_status['lemma']:
+            elif self.query_status['lemma']:
                 rel = _simple_search(lemmas_query, self.lemmas_matrix)
             else:
                 rel = _simple_search(tokens_query, self.tokens_matrix)
         else:
             char_vec = np.ones(len(self.articles))
-            kernel = _create_kernel(query_status)
-            convolution = _inverted_prime_convolution(self.prime_ids, kernel)
-            if query_status['POS']:
+            self.kernel = _create_kernel(self.query_status)
+            self.conv = _inverted_prime_convolution(self.prime_ids, self.kernel)
+            if self.query_status['POS']:
                 char_vec *= np.around(np.exp(self.pos_matrix @ pos_query)).flatten()
-            if query_status['lemma']:
+            if self.query_status['lemma']:
                 char_vec *= np.around(np.exp(self.lemmas_matrix @ lemmas_query)).flatten()
-            if query_status['token']:
+            if self.query_status['token']:
                 char_vec *= np.around(np.exp(self.tokens_matrix @ tokens_query)).flatten()
-            prime_mapping = char_vec.reshape((-1, 1)) @ convolution.reshape((1, -1))
+            print(char_vec[0])
+            prime_mapping = char_vec.reshape((-1, 1)) @ self.conv.reshape((1, -1))
             rel = _find_integers(prime_mapping)
-        return json.dumps(self.display_results(rel), ensure_ascii=False).encode('utf8')
+        print(self.display_results(rel))
 
         
 
 
-# In[42]:
+# In[7]:
 
 
 with open("articles_parsed_final", "rb") as f:
         a = pickle.load(f)
 
 
-# In[43]:
+# In[ ]:
 
 
 searcher = Searcher(a)
 
 
-# In[44]:
+# In[84]:
 
 
 with open('corpus', 'wb') as f:
     pickle.dump(searcher, f)
-
-
-# In[ ]:
-
-
-
 
