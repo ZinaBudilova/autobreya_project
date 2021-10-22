@@ -1,6 +1,6 @@
 body {
 	text-align: center;
-	background-color: #C0C0C0;
+	background-color: rgb(192, 192, 192);
 	font-family: "Exo 2", sans-serif;
 	margin: 0;
 	padding: 0;
@@ -10,7 +10,7 @@ p {
 	line-height: 2;
 }
 
-input[type = text] {
+input[name = query] {
     font-family: "Exo 2", sans-serif;
     color: blue;
     font-weight: bold;
@@ -41,8 +41,27 @@ span {
     display: block;
 }
 
-#kgb {
-    height: auto;
-    width: 400px;
+.container {
+    position: relative;
 }
 
+#kgb-image {
+    height: 200px;
+    width: 100%;
+    background-image: url("kgb.jpg");
+    opacity: 0.3;
+    background-size: auto 200px;
+    background-repeat: repeat-x;
+}
+
+#kgb-text {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translate(-50%, -50%)
+}
+
+#results {
+    text-align: left;
+    margin-left: 10px;
+}
