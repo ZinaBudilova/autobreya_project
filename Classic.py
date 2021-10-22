@@ -79,7 +79,7 @@ class Text:
         return self.source + ' ' + self.text
 
 
-# In[4]:
+# In[5]:
 
 
 class Searcher:
@@ -175,7 +175,7 @@ class Searcher:
             return {-1: 'Nothing found'}
         for n, idx in enumerate(rel):
             sent = self.articles[idx]
-            result[n] = [idx, sent.source, sent.text]
+            result[n] = [int(idx), sent.source, sent.text]
         return result
     
     def brute_force(self, rel) -> np.ndarray:
@@ -253,6 +253,12 @@ class Searcher:
         return json.dumps(self.display_results(rel), ensure_ascii=False).encode('utf8')
 
         
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

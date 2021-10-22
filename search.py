@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[14]:
 
 
 from typing import List
@@ -18,7 +18,7 @@ from natasha import (
 )
 
 
-# In[2]:
+# In[15]:
 
 
 segmenter = Segmenter()
@@ -30,7 +30,7 @@ ner_tagger = NewsNERTagger(emb)
 names_extractor = NamesExtractor(morph_vocab)
 
 
-# In[3]:
+# In[16]:
 
 
 class Word:
@@ -85,7 +85,7 @@ class Text:
         return self.source + ' ' + self.text
 
 
-# In[4]:
+# In[17]:
 
 
 import numpy as np
@@ -96,7 +96,7 @@ from pymorphy2 import MorphAnalyzer
 import json
 
 
-# In[10]:
+# In[45]:
 
 
 class Searcher:
@@ -166,7 +166,6 @@ class Searcher:
                 elif s_tok in self.pos_vocab.keys():
                     query_status['POS'][i] =  set([s_tok])
                     pos_query[self.pos_vocab[s_tok]][0] = i + 1
-                    print(np.nonzero(pos_query))
                 else:
                     ana = self.morph.parse(s_tok)
                     poss_lemmas = set([x.normal_form for x in ana])
@@ -175,7 +174,6 @@ class Searcher:
                     for lemma in poss_lemmas:
                         try:
                             lemmas_query[self.lemmas_vocab[lemma]][0] = i + 1
-                            print(np.nonzero(lemmas_query))
                             valid = True
                         except KeyError:
                             continue
@@ -192,7 +190,7 @@ class Searcher:
             return {-1: 'Nothing found'}
         for n, idx in enumerate(rel):
             sent = self.articles[idx]
-            result[n] = [idx, sent.source, sent.text]
+            result[n] = [int(idx), sent.source, sent.text]
         return result
     
     def brute_force(self, rel) -> np.ndarray:
@@ -264,28 +262,27 @@ class Searcher:
                 char_vec *= np.around(np.exp(self.lemmas_matrix @ lemmas_query)).flatten()
             if self.query_status['token']:
                 char_vec *= np.around(np.exp(self.tokens_matrix @ tokens_query)).flatten()
-            print(char_vec[0])
             prime_mapping = char_vec.reshape((-1, 1)) @ self.conv.reshape((1, -1))
             rel = _find_integers(prime_mapping)
-        print(self.display_results(rel))
+        return json.dumps(self.display_results(rel), ensure_ascii=False).encode('utf8')
 
         
 
 
-# In[7]:
+# In[46]:
 
 
 with open("articles_parsed_final", "rb") as f:
         a = pickle.load(f)
 
 
-# In[ ]:
+# In[47]:
 
 
 searcher = Searcher(a)
 
 
-# In[84]:
+# In[21]:
 
 
 with open('corpus', 'wb') as f:
