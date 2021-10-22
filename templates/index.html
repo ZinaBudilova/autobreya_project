@@ -6,8 +6,12 @@
     <link rel="stylesheet" type="text/css" href="../static/styles.css">
 </head>
 <body>
-    <img id="kgb" src="static/kgb.jpg">
-    <h1>Результаты поиска по запросу <span>{{query}}</span>:</h1>
-    <!-- {{result}} -->
+    <div id="kgb-image"></div>
+    <h1 id="kgb-text">Результаты поиска по запросу <br/> <span>{{query}}</span>:</h1>
+    <div id="results">
+    {% for key, value in result.items() %}
+        <p>{{value[2]}}  <a href={{value[1]}}>Источник</a> <br/> </p>
+    {% endfor %}
+    </div>
 </body>
 </html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск по Tproger</title>
+    <link rel="stylesheet" type="text/css" href="../static/styles.css">
+</head>
+<body>
+    <div class="search">
+        <h1>Поиск по корпусу статей <span>Tproger</span></h1>
+        <form action="/search" method="post">
+            <p>Введите ваш запрос:</p>
+            <input name='query' required>
+            <input type="submit" value="Искать!">
+        </form>
+    </div>
+    <div class="instruction">
+        <h1><span>Инструкция</span> по поиску</h1>
+        <p>В запросе допускается использовать словоформы, леммы и <a href="https://universaldependencies.org/u/pos/">теги частей речи</a>. <br/>
+        Словоформа пишется в двойных кавычках, лемма - без кавычек, теги - без кавычек и капсом. <br/>
+        Пробелом разделяются разные токены. Через "+" можно задать слово и его часть речи. <br/>
+        Длина запроса может быть любой. <br/>
+        Пример запроса: <span>знать+NOUN VERB "царь"</span>. Он найдёт сочетания типа "знати надоел царь".</p>
+    </div>
+</body>
+</html>
