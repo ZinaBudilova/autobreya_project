@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[14]:
+# In[77]:
 
 
 from typing import List
@@ -18,7 +18,7 @@ from natasha import (
 )
 
 
-# In[15]:
+# In[78]:
 
 
 segmenter = Segmenter()
@@ -30,7 +30,7 @@ ner_tagger = NewsNERTagger(emb)
 names_extractor = NamesExtractor(morph_vocab)
 
 
-# In[16]:
+# In[79]:
 
 
 class Word:
@@ -85,7 +85,7 @@ class Text:
         return self.source + ' ' + self.text
 
 
-# In[17]:
+# In[80]:
 
 
 import numpy as np
@@ -96,7 +96,7 @@ from pymorphy2 import MorphAnalyzer
 import json
 
 
-# In[45]:
+# In[111]:
 
 
 class Searcher:
@@ -151,6 +151,7 @@ class Searcher:
         tokens_query = np.zeros((len(self.tokens_vocab), 1))
         query_status = defaultdict(dict)
         toks = query.split()
+        query_status['len'] = len(toks)
         if len(toks) == 1 and toks[0].find('+') < 0:
             query_status['simple'] = True
         for i, tok in enumerate(toks):
@@ -221,7 +222,7 @@ class Searcher:
             return res[:, 0]
         
         def _create_kernel(query_status) -> np.ndarray:
-            kernel = np.zeros((3, 3))
+            kernel = np.zeros((3, query_status['len']))
             for row, term in {0: 'POS', 1: 'lemma', 2: 'token'}.items():
                 if query_status[term]:
                     for i in query_status[term].keys():
@@ -266,17 +267,15 @@ class Searcher:
             rel = _find_integers(prime_mapping)
         return json.dumps(self.display_results(rel), ensure_ascii=False).encode('utf8')
 
-        
 
-
-# In[46]:
+# In[112]:
 
 
 with open("articles_parsed_final", "rb") as f:
         a = pickle.load(f)
 
 
-# In[47]:
+# In[113]:
 
 
 searcher = Searcher(a)

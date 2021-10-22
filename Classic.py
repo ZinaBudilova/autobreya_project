@@ -134,6 +134,7 @@ class Searcher:
         tokens_query = np.zeros((len(self.tokens_vocab), 1))
         query_status = defaultdict(dict)
         toks = query.split()
+        query_status['len'] = len(toks)
         if len(toks) == 1 and toks[0].find('+') < 0:
             query_status['simple'] = True
         for i, tok in enumerate(toks):
@@ -149,7 +150,6 @@ class Searcher:
                 elif s_tok in self.pos_vocab.keys():
                     query_status['POS'][i] =  set([s_tok])
                     pos_query[self.pos_vocab[s_tok]][0] = i + 1
-                    print(np.nonzero(pos_query))
                 else:
                     ana = self.morph.parse(s_tok)
                     poss_lemmas = set([x.normal_form for x in ana])
@@ -158,7 +158,6 @@ class Searcher:
                     for lemma in poss_lemmas:
                         try:
                             lemmas_query[self.lemmas_vocab[lemma]][0] = i + 1
-                            print(np.nonzero(lemmas_query))
                             valid = True
                         except KeyError:
                             continue
@@ -206,7 +205,7 @@ class Searcher:
             return res[:, 0]
         
         def _create_kernel(query_status) -> np.ndarray:
-            kernel = np.zeros((3, 3))
+            kernel = np.zeros((3, query_status['len']))
             for row, term in {0: 'POS', 1: 'lemma', 2: 'token'}.items():
                 if query_status[term]:
                     for i in query_status[term].keys():
@@ -247,18 +246,9 @@ class Searcher:
                 char_vec *= np.around(np.exp(self.lemmas_matrix @ lemmas_query)).flatten()
             if self.query_status['token']:
                 char_vec *= np.around(np.exp(self.tokens_matrix @ tokens_query)).flatten()
-            print(char_vec[0])
             prime_mapping = char_vec.reshape((-1, 1)) @ self.conv.reshape((1, -1))
             rel = _find_integers(prime_mapping)
         return json.dumps(self.display_results(rel), ensure_ascii=False).encode('utf8')
-
-        
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
